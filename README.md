@@ -17,6 +17,9 @@ pip install opencv-python numpy imageio
 python cloudInterp.py
 ```
 #### Example 2: Batch interpolate satellite cloud between many images and make them into one `mp4` video.
+```bash
+python cloudInterpBatch.py
+```
 
 ## Next Step
  I want this function can execute within browser. As I know, I do NOT find similar library run within browser.
