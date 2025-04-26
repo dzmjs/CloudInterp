@@ -1,10 +1,9 @@
 
 import cv2
-import numpy as np
 import imageio
 
 # 读取两张图像
-img1 = cv2.imread('images/SEVP_NSMC_WXCL_ASC_E99_ACHN_LNO_PY_20250424114500000.JPG')
+img1 = cv2.imread('images/SEVP_NSMC_WXCL_ASC_E99_ACHN_LNO_PY_20250424111500000.JPG')
 img2 = cv2.imread('images/SEVP_NSMC_WXCL_ASC_E99_ACHN_LNO_PY_20250424121500000.JPG')
 
 assert img1 is not None, "cloud1.png not found"

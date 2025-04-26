@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+  <title>卫星云图丝滑插值</title>
+  <!-- PyScript CSS -->
+  <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+  <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+  <script async src="https://docs.opencv.org/4.11.0/opencv.js" type="text/javascript"></script>
+</head>
+<body>
+<py-config>
+packages = ["numpy", "opencv-python"]
+</py-config>
+  <h1>卫星云图平滑过渡</h1>
+  <p>
+  <!-- 控制流程的 PyScript -->
+	  <script type="py">
+	    from pyscript import display
+	    from datetime import datetime
+	    now = datetime.now()
+	    display(now.strftime("%m/%d/%Y, %H:%M:%S"))
+	  </script>
+	</p>
+  <div style="display: none">
+    <input type="text" id="name" >
+    <button onclick="sayHello()">sayHello</button>
+    <div id="output"></div>
+  </div>
+  <!-- 图像显示区 -->
+<!--  <canvas id="canvas" width="859" height="600"></canvas>-->
+    <img id="animateImg" width="859" height="600" />
+  <!-- 上传文件 -->
+  <input type="file" id="imgInput1" accept="image/*">
+  <input type="file" id="imgInput2" accept="image/*">
+  <button id="start">生成动画</button>
+
+  <py-script>
+from js import document
+import pyodide
+import base64
+import numpy as np
+import cv2
+import json
+
+def greet(name):
+    return f"你好，{name}！"
+
+def get_steps():
+    # 这里可以动态返回步数，也可以根据前端文本框动态获取
+    return 20
+
+def imread_base64(b64_string):
+    # 如果有 "data:image/xxx;base64," 头，要去掉
+    if ',' in b64_string:
+        b64_string = b64_string.split(',')[1]
+    img_bytes = base64.b64decode(b64_string)
+    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    return img
+
+def ndarray_to_base64img(img: np.ndarray, format: str = 'png') -> str:
+    # img: numpy 数组 (H,W,C)
+    # format: "png" or "jpg"
+    _, buf = cv2.imencode(f'.{format}', img)
+    b64 = base64.b64encode(buf).decode('utf-8')
+    return f"data:image/{format};base64,{b64}"
+
+def get_steps():
+    # 这里可以动态返回步数，也可以根据前端文本框动态获取
+    return 20
+def interp(img1Str, img2Str):
+    # 读取两张图像
+    #img1 = cv2.imread('images/SEVP_NSMC_WXCL_ASC_E99_ACHN_LNO_PY_20250424111500000.JPG')
+    #img2 = cv2.imread('images/SEVP_NSMC_WXCL_ASC_E99_ACHN_LNO_PY_20250424121500000.JPG')
+    img1 = imread_base64(img1Str)
+    img2 = imread_base64(img2Str)
+
+    assert img1 is not None, "cloud1.png not found"
+    assert img2 is not None, "cloud2.png not found"
+    assert img1.shape == img2.shape, "图片尺寸不一致"
+
+    num_frames = get_steps()  # 动画补间帧的数量
+    frames = []
+
+    for i in range(num_frames + 1):
+        alpha = i / num_frames
+        # alpha 线性插值，生成中间帧
+        inter = cv2.addWeighted(img1, 1 - alpha, img2, alpha, 0)
+        frames.append(inter)
+
+    # 保存动画为 GIF
+    frames_rgb = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in frames]
+    frames_pngs= [ndarray_to_base64img(p) for p in frames_rgb]
+    return json.dumps(frames_pngs)
+
+
+# 把 Python 函数暴露为 JS 可调用
+from js import window
+window.pyFunctions = {
+    "greet": greet,
+    "interp": interp,
+    "get_steps": get_steps
+}
+</py-script>
+<script>
+  async function sayHello() {
+    let name = document.getElementById("name").value;
+    var func=window.pyFunctions.get("greet");
+    let result = await func(name);
+    document.getElementById("output").innerText = result;
+  }
+</script>
+  <!-- 插值逻辑由 OpenCV.js 完成 -->
+  <script>
+    let img1, img2, canvas, ctx;
+    let interpolatedFrames = [];
+    var animate = false, animateIndex=0, setInt=null;
+
+    document.getElementById('imgInput1').onchange = function(e) {
+      loadImage(e.target.files[0], (img) => { img1 = img; });
+    };
+
+    document.getElementById('imgInput2').onchange = function(e) {
+      loadImage(e.target.files[0], (img) => { img2 = img; });
+    };
+
+    document.getElementById('start').onclick = function() {
+      if (!img1 || !img2) return alert("请先上传两张图像！");
+      runPyFunction(img1.currentSrc, img2.currentSrc);
+    };
+
+    function loadImage(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        let img = new Image();
+        img.onload = function() { callback(img); }
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function runPyFunction(img1str, img2str){
+        var interp=window.pyFunctions.get("interp");
+        let result = await interp(img1str, img2str);
+        var list = JSON.parse(result);
+        interpolatedFrames = list;
+        clearInterval(setInt);
+        animateIndex=0;
+        animate=true;
+        setInt = setInterval(animateFun, 500);
+    }
+    function animateFun(){
+        if(animate){
+            animateIndex = animateIndex % interpolatedFrames.length;
+            var src = interpolatedFrames[animateIndex];
+            document.getElementById("animateImg").src=src;
+            animateIndex++;
+        }
+    }
+    function generateInterpolation() {
+      canvas = document.getElementById("canvas");
+      ctx = canvas.getContext("2d");
+
+      let steps = 10;
+      for (let i = 0; i <= steps; i++) {
+        let alpha = i / steps;
+        interpolateAndDraw(alpha);
+      }
+    }
+
+    function interpolateAndDraw(alpha) {
+      let offCanvas = document.createElement('canvas');
+      offCanvas.width = canvas.width;
+      offCanvas.height = canvas.height;
+      let offCtx = offCanvas.getContext('2d');
+
+      offCtx.globalAlpha = 1 - alpha;
+      offCtx.drawImage(img1, 0, 0, canvas.width, canvas.height);
+      offCtx.globalAlpha = alpha;
+      offCtx.drawImage(img2, 0, 0, canvas.width, canvas.height);
+
+      let frame = new Image();
+      frame.src = offCanvas.toDataURL();
+      interpolatedFrames.push(frame);
+    }
+
+    // 可在此处添加动画播放逻辑
+    
+  </script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyScript JS-Python Interaction</title>
+    <!-- Load PyScript -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+  <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>PyScript: JavaScript to Python Communication</h1>
+
+    <div>
+        <h2>Example 1: Simple Function Call</h2>
+        <button id="btn1">Call Python greet() function</button>
+        <div id="result1" class="result">Result will appear here</div>
+    </div>
+
+    <div>
+        <h2>Example 2: Function with Parameters</h2>
+        <input type="number" id="num1" placeholder="Enter first number" value="5">
+        <input type="number" id="num2" placeholder="Enter second number" value="3">
+        <button id="btn2">Add Numbers (Python)</button>
+        <div id="result2" class="result">Result will appear here</div>
+    </div>
+
+    <div>
+        <h2>Example 3: Returning Complex Data</h2>
+        <button id="btn3">Generate Python Dictionary</button>
+        <div id="result3" class="result">Result will appear here</div>
+    </div>
+
+    <!-- PyScript Python Code -->
+<py-script>
+def greet(name="World"):
+    return f"Hello, {name} from Python!"
+
+def add_numbers(a, b):
+    return a + b
+
+def generate_data():
+    import datetime
+    import json
+    data = {
+        "name": "张三",
+        "age": 30,
+        "city": "北京",
+        "skills": ["Python", "JavaScript", "SQL"],
+        "is_employed": True,
+        "contact": {
+            "email": "zhangsan@example.com",
+            "phone": "13800138000"
+        }
+    }
+
+    # 使用json.dumps()将字典转换为JSON字符串
+    json_string = json.dumps(data, ensure_ascii=False, indent=4)
+
+    return json_string
+
+# Make functions available to JavaScript
+from js import window
+window.pyFunctions = {
+    "greet": greet,
+    "add_numbers": add_numbers,
+    "generate_data": generate_data
+}
+</py-script>
+
+    <!-- JavaScript Code -->
+    <script>
+        // Example 1: Simple function call
+        document.getElementById("btn1").addEventListener("click", function(){
+            var fun=window.pyFunctions.get('greet');
+            try {
+                // Call the Python function through the pyFunctions proxy
+                const result = fun("JavaScript User");
+                document.getElementById("result1").textContent = result;
+            } catch (error) {
+                document.getElementById("result1").textContent = "Error: " + error;
+            }
+        });
+
+        // Example 2: Function with parameters
+        document.getElementById("btn2").addEventListener("click", function(){
+            const num1 = parseFloat(document.getElementById("num1").value);
+            const num2 = parseFloat(document.getElementById("num2").value);
+
+            try {
+                var fun = window.pyFunctions.get("add_numbers");
+                var result = fun(num1, num2);
+                document.getElementById("result2").textContent =
+                    `${num1} + ${num2} = ${result}`;
+            } catch (error) {
+                document.getElementById("result2").textContent = "Error: " + error;
+            }
+        });
+
+        // Example 3: Returning complex data
+        document.getElementById("btn3").addEventListener("click", () => {
+            try {
+                var data = pyFunctions.get("generate_data");
+                var result=data();
+                console.info(result);
+                // Convert the object to a pretty-printed JSON string
+                document.getElementById("result3").textContent =
+                    JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById("result3").textContent = "Error: " + error;
+            }
+        });
+    </script>
+</body>
+</html>
