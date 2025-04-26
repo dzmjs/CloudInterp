@@ -2,7 +2,7 @@
 Interpolate satellite cloud images into smooth animations. 
 
 **CloudInterp** is a Python tool designed to interpolate satellite cloud images and generate smooth transition animations. By processing a time series of satellite imagery, it creates continuous `.gif` or `.mp4` videos, ideal for meteorological visualization, scientific communication, or educational use.  
-Now, We can use **OpenCV** to interpolate between images. The core role is PyScript.
+Now, We can use **OpenCV** to interpolate between images. The core role is [PyScript](https://pyscript.net/).
 
 ## Quick Start
  Python Version = 3.9
